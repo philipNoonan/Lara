@@ -1,0 +1,3 @@
+include lara/shaders/*.comp
+include lara/shaders/*.vert
+include lara/shaders/*.frag
