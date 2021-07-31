@@ -1,6 +1,10 @@
 <body>
     <div class="container">
         <div class="row">
+            <audio controls autoplay muted>
+                <source src="{{ url_for('audio') }}" type="audio/x-wav;codec=pcm">
+                Your browser does not support the audio element.
+            </audio>
             <div class="col-lg-8  offset-lg-2">
                 <h3 class="mt-5">Live Streaming0</h3>
                 <img src="{{ url_for('video_feed0') }}" width="100%">

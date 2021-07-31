@@ -11,6 +11,7 @@ requirements = [
     'opencv-python',
     'imgui',
     'flask',
+    'pyaudio'
 ]
 
 setup(
