@@ -25,11 +25,7 @@ def video_feed2():
     return Response(get_infra_rs(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-FORMAT = pyaudio.paInt16
-CHANNELS = 2
-RATE = 44100
-CHUNK = 1024
-RECORD_SECONDS = 1
+
 
 def genHeader(sampleRate, bitsPerSample, channels):
     datasize = 2000*10**6
@@ -53,14 +49,26 @@ def audio():
     # start Recording
     def sound():
 
-        CHUNK = 1024
+        p = pyaudio.PyAudio()
+        info = p.get_host_api_info_by_index(0)
+        numdevices = info.get('deviceCount')
+        for i in range(0, numdevices):
+            if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+                print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
+
+        FORMAT = pyaudio.paInt16
+        CHANNELS = 1
+        RATE = 44100
+        RECORD_SECONDS = 1
+
+        CHUNK = 4096
         sampleRate = 44100
         bitsPerSample = 16
-        channels = 2
+        channels = 1
         wav_header = genHeader(sampleRate, bitsPerSample, channels)
 
         stream = audio1.open(format=FORMAT, channels=CHANNELS,
-                        rate=RATE, input=True,input_device_index=11,
+                        rate=RATE, input=True,input_device_index=18,
                         frames_per_buffer=CHUNK)
         print("recording...")
         #frames = []
@@ -87,7 +95,7 @@ def init():
     global audio1
     audio1 = pyaudio.PyAudio()
 
-    import pyrealsense2 as rs
+    import pyrealsense2.pyrealsense2 as rs
     pipeline = rs.pipeline()
     context = rs.context()
     #camera_data = find_cameras(context)
@@ -126,7 +134,7 @@ def get_color_rs():
             if capture:
                 col = np.asarray(color.get_data())
                 colDown = cv2.resize(col, (320, 240))
-                ret, buffer = cv2.imencode('.jpg', colDown)
+                ret, buffer = cv2.imencode('.jpg', cv2.cvtColor(colDown, cv2.COLOR_BGR2RGB))
                 frame = buffer.tobytes()
                 yield (b'--frame\r\n'
                     b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
@@ -164,7 +172,7 @@ def gen_frames():
         if not success:
             break
         else:
-            ret, buffer = cv2.imencode('.jpg', frame)
+            ret, buffer = cv2.imencode('.jpg', cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             frame = buffer.tobytes()
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')  # concat frame one by one and show result
