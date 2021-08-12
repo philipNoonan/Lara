@@ -5,6 +5,7 @@ import numpy as np
 import threading
 import time
 import pyaudio
+import serial
 
 
 app = Flask(__name__)
@@ -27,8 +28,8 @@ def video_feed2():
 
 
 
-def genHeader(sampleRate, bitsPerSample, channels):
-    datasize = 2000*10**6
+def genHeader(sampleRate, bitsPerSample, channels, samples):
+    datasize = samples * channels * bitsPerSample // 8
     o = bytes("RIFF",'ascii')                                               # (4byte) Marks file as RIFF
     o += (datasize + 36).to_bytes(4,'little')                               # (4byte) File size in bytes excluding this and RIFF marker
     o += bytes("WAVE",'ascii')                                              # (4byte) File type
@@ -59,13 +60,10 @@ def audio():
         FORMAT = pyaudio.paInt16
         CHANNELS = 1
         RATE = 44100
-        RECORD_SECONDS = 1
 
         CHUNK = 4096
-        sampleRate = 44100
         bitsPerSample = 16
-        channels = 1
-        wav_header = genHeader(sampleRate, bitsPerSample, channels)
+        wav_header = genHeader(RATE, bitsPerSample, CHANNELS, 200000)
 
         stream = audio1.open(format=FORMAT, channels=CHANNELS,
                         rate=RATE, input=True,input_device_index=18,
@@ -79,6 +77,7 @@ def audio():
                first_run = False
            else:
                data = stream.read(CHUNK)
+               print("reading")
            yield(data)
 
     return Response(sound())
@@ -94,6 +93,12 @@ def init():
 
     global audio1
     audio1 = pyaudio.PyAudio()
+
+    global ser
+    ser = serial.Serial()
+    ser.baudrate = 115200
+    ser.port = 'COM5'
+    ser.open()
 
     import pyrealsense2.pyrealsense2 as rs
     pipeline = rs.pipeline()
@@ -115,7 +120,7 @@ def init():
     dep = conf.get_stream(rs.stream.depth, 0).as_video_stream_profile()
     col = conf.get_stream(rs.stream.color, 0).as_video_stream_profile()
 
-    global capture, color, depth, infra, lock
+    global capture, color, depth, infra, lock, thermal
 
     while True:
         capture = pipeline.wait_for_frames()
@@ -123,6 +128,8 @@ def init():
         depth = capture.get_depth_frame()
         color = capture.get_color_frame()
         infra = capture.get_infrared_frame()
+
+        thermal = ser.readline()
 
 
 
@@ -163,6 +170,14 @@ def get_depth_rs():
                 yield (b'--frame\r\n'
                     b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
                 time.sleep(0.02)
+
+def get_thermal():
+    global thermal
+
+    while True:
+        #with lock:
+        print(thermal)
+
 
 def gen_frames():
     cap = cv2.VideoCapture(0)
