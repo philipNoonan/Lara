@@ -1,22 +1,87 @@
-<body>
-    <div class="container">
-        <div class="row">
-            <audio controls autoplay muted>
-                <source src="{{ url_for('audio') }}" type="audio/x-wav;codec=pcm">
-                Your browser does not support the audio element.
-            </audio>
-            <div class="col-lg-8  offset-lg-2">
-                <h3 class="mt-5">Live Streaming0</h3>
-                <img src="{{ url_for('video_feed0') }}" width="100%">
-            </div>
-            <div class="col-lg-8  offset-lg-2">
-                <h3 class="mt-5">Live Streaming1</h3>
-                <img src="{{ url_for('video_feed1') }}" width="100%">
-            </div>
-            <div class="col-lg-8  offset-lg-2">
-                <h3 class="mt-5">Live Streaming2</h3>
-                <img src="{{ url_for('video_feed2') }}" width="100%">
-            </div>
+<html>
+    <head>
+        <title>Real time streaming</title>
+    </head>
+    <body>
+        <canvas id="canvasIR" height="384" width="512"></canvas>
+        <canvas id="canvasDep" height="384" width="512"></canvas>
+        <div class="slidecontainer">
+            <input type="range" min="0" max="255" value="50" class="slider" id="minSlider">
         </div>
-    </div>
+        <div class="slidecontainer">
+            <input type="range" min="0" max="255" value="50" class="slider" id="maxSlider">
+        </div>
+        <script>
+            const ws = new WebSocket("ws://192.168.1.197:8000/ws");    
+            ws.binaryType = 'arraybuffer'; 
+            let x = 0;
+            var slider = document.getElementById("minSlider");
+
+            ws.onmessage = function(event) {
+                var data = event.data;
+                var dv = new DataView(data);
+
+                if (dv.getUint8(0) == 0) {
+                    var canvas = document.getElementById('canvasIR'),
+                    canvasWidth  = canvas.width,
+                    canvasHeight = canvas.height,
+                    ctx = canvas.getContext('2d'),
+                    imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight),
+
+                    view = new DataView(imageData.data.buffer);
+                    for (var y = 0; y < canvasHeight; ++y) {
+                        for (var x = 0; x < canvasWidth; ++x) {
+                            var offset = (y * canvasWidth + x);
+                            view.setUint8(offset * 4, dv.getUint8(offset)); 
+                            view.setUint8(offset * 4 + 1, dv.getUint8(offset)); 
+                            view.setUint8(offset * 4 + 2, dv.getUint8(offset)); 
+                            view.setUint8(offset * 4 + 3, 255); 
+
+                        }
+                    }
+                    ctx.putImageData(imageData, 0, 0);
+                }
+                else if (dv.getUint8(0) == 1) {
+                    var canvas = document.getElementById('canvasDep'),
+                    canvasWidth  = canvas.width,
+                    canvasHeight = canvas.height,
+                    ctx = canvas.getContext('2d'),
+                    imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight),
+
+                    view = new DataView(imageData.data.buffer);
+                    for (var y = 0; y < canvasHeight; ++y) {
+                        for (var x = 0; x < canvasWidth; ++x) {
+                            var offset = (y * canvasWidth + x);
+                            view.setUint8(offset * 4, dv.getUint8(offset)); 
+                            view.setUint8(offset * 4 + 1, dv.getUint8(offset)); 
+                            view.setUint8(offset * 4 + 2, dv.getUint8(offset)); 
+                            view.setUint8(offset * 4 + 3, 255); 
+
+                        }
+                    }
+                    ctx.putImageData(imageData, 0, 0);
+                }
+
+                sendMessage(event);
+
+            };
+
+            function sendMessage(event) {
+                var minInput = document.getElementById("minSlider")
+                var maxInput = document.getElementById("maxSlider")
+
+                ws.send(String(minInput.value) + " " + String(maxInput.value))
+                event.preventDefault()
+            }
+
+
+
+            
+
+            //slider.oninput = function() {
+            //    sendMessage(event);            
+            //} 
+        </script>
+
     </body>
+</html>

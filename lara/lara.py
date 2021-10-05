@@ -6,6 +6,7 @@ import threading
 import time
 import pyaudio
 import serial
+from serial.serialutil import PARITY_NONE, STOPBITS_ONE
 
 
 app = Flask(__name__)
@@ -25,7 +26,9 @@ def video_feed1():
 def video_feed2():
     return Response(get_infra_rs(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-
+@app.route('/video_feed3')
+def video_feed3():
+    return Response(get_thermal(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
 def genHeader(sampleRate, bitsPerSample, channels, samples):
@@ -66,7 +69,7 @@ def audio():
         wav_header = genHeader(RATE, bitsPerSample, CHANNELS, 200000)
 
         stream = audio1.open(format=FORMAT, channels=CHANNELS,
-                        rate=RATE, input=True,input_device_index=18,
+                        rate=RATE, input=True,input_device_index=11,
                         frames_per_buffer=CHUNK)
         print("recording...")
         #frames = []
@@ -77,7 +80,7 @@ def audio():
                first_run = False
            else:
                data = stream.read(CHUNK)
-               print("reading")
+              # print("reading")
            yield(data)
 
     return Response(sound())
@@ -91,14 +94,17 @@ lock = threading.Lock()
 
 def init():
 
-    global audio1
-    audio1 = pyaudio.PyAudio()
+    # global audio1
+    # audio1 = pyaudio.PyAudio()
 
-    global ser
-    ser = serial.Serial()
-    ser.baudrate = 115200
-    ser.port = 'COM5'
-    ser.open()
+    # global ser
+    # ser = serial.Serial()
+    # ser.baudrate = 2000000
+    # ser.port = '/dev/ttyUSB0'
+    # ser.bytesize=8
+    # ser.stopbits=STOPBITS_ONE
+    # ser.parity=PARITY_NONE
+    # ser.open()
 
     import pyrealsense2.pyrealsense2 as rs
     pipeline = rs.pipeline()
@@ -123,13 +129,14 @@ def init():
     global capture, color, depth, infra, lock, thermal
 
     while True:
+        
+
         capture = pipeline.wait_for_frames()
         
         depth = capture.get_depth_frame()
         color = capture.get_color_frame()
         infra = capture.get_infrared_frame()
 
-        thermal = ser.readline()
 
 
 
@@ -153,7 +160,7 @@ def get_infra_rs():
     while True:
         #with lock:
             if capture:
-                ret, buffer = cv2.imencode('.jpg', cv2.pyrDown(np.asarray(infra.get_data())))
+                ret, buffer = cv2.imencode('.jpg', np.asarray(infra.get_data()))
                 frame = buffer.tobytes()
                 yield (b'--frame\r\n'
                     b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
@@ -172,11 +179,28 @@ def get_depth_rs():
                 time.sleep(0.02)
 
 def get_thermal():
-    global thermal
+    global ser
+
+    img = np.zeros([32, 24])
+
 
     while True:
+        #print("reading thermal")
+        thermal = ser.readline()
+
+        imgList = list(thermal)
+        img = np.array(imgList[0:768])
+        imgMat = np.reshape(img, (24, 32))
+        ret, buffer = cv2.imencode('.jpg', imgMat)
+        frame = buffer.tobytes()
+        yield (b'--frame\r\n'
+            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
         #with lock:
-        print(thermal)
+        #decoded_bytes = int(thermal[0:len(thermal)-2].decode("utf-8"))
+        #print(decoded_bytes)
+        #print(list(thermal))
+        #time.sleep(0.1)
 
 
 def gen_frames():

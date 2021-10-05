@@ -1,0 +1,98 @@
+<html>
+    <head>
+        <title>Real time streaming</title>
+    </head>
+    <body>
+
+        <canvas id="canvasCol" height="320" width="240"></canvas>
+
+        <canvas id="canvas" height="512" width="512"></canvas>
+
+        <div class="slidecontainer">
+            <input type="range" min="0" max="255" value="50" class="slider" id="minSlider">
+        </div>
+        <div class="slidecontainer">
+            <input type="range" min="0" max="255" value="50" class="slider" id="maxSlider">
+        </div>
+
+        <script>
+
+            const ws = new WebSocket("ws://192.168.1.22:8000/ws");   
+            // const wsCol = new WebSocket("ws://192.168.1.22:8000/wsCol");   
+
+            const ws1 = new WebSocket("ws://192.168.1.22:8000/ws1");    
+
+            ws.binaryType = 'arraybuffer'; 
+            // wsCol.binaryType = 'arraybuffer'; 
+
+
+            let x = 0;
+            ws.onmessage = function(event) {
+                var data = event.data;
+                var dv = new DataView(data);
+
+                var canvas = document.getElementById('canvas'),
+                    canvasWidth  = canvas.width,
+                    canvasHeight = canvas.height,
+                    ctx = canvas.getContext('2d'),
+                    imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight),
+
+                    view = new DataView(imageData.data.buffer);
+                    for (var y = 0; y < canvasHeight; ++y) {
+                        for (var x = 0; x < canvasWidth; ++x) {
+                            var offset = (y * canvasWidth + x);
+                            view.setUint8(offset * 4, dv.getUint8(offset)); 
+                            view.setUint8(offset * 4 + 1, dv.getUint8(offset)); 
+                            view.setUint8(offset * 4 + 2, dv.getUint8(offset)); 
+                            view.setUint8(offset * 4 + 3, 255); 
+
+                        }
+                    }
+                    ctx.putImageData(imageData, 0, 0);
+
+            };
+
+            // wsCol.onmessage = function(event) {
+            //     var data = event.data;
+            //     var dv = new DataView(data);
+
+            //     var canvas = document.getElementById('canvasCol'),
+            //         canvasWidth  = canvas.width,
+            //         canvasHeight = canvas.height,
+            //         ctx = canvas.getContext('2d'),
+            //         imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight),
+
+            //         view = new DataView(imageData.data.buffer);
+            //         for (var y = 0; y < canvasHeight; ++y) {
+            //             for (var x = 0; x < canvasWidth; ++x) {
+            //                 var offset = (y * canvasWidth + x);
+            //                 view.setUint8(offset * 4 + 3, dv.getUint8(offset * 4 + 3)); 
+            //                 view.setUint8(offset * 4 + 0, dv.getUint8(offset * 4 + 2)); 
+            //                 view.setUint8(offset * 4 + 1, dv.getUint8(offset * 4 + 1)); 
+            //                 view.setUint8(offset * 4 + 2, dv.getUint8(offset * 4 + 0)); 
+
+            //             }
+            //         }
+            //         ctx.putImageData(imageData, 0, 0);
+
+            // };
+
+            function sendMessage(event) {
+                var minInput = document.getElementById("minSlider")
+                var maxInput = document.getElementById("maxSlider")
+
+                ws1.send(String(minInput.value) + " " + String(maxInput.value))
+                event.preventDefault()
+            }
+
+            minSlider.oninput = function() {
+                sendMessage(event);            
+            } 
+
+            maxSlider.oninput = function() {
+                sendMessage(event);            
+            }
+
+        </script>
+    </body>
+</html>

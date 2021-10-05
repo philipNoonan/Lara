@@ -1,0 +1,75 @@
+<html>
+    <head>
+        <title>Real time streaming</title>
+    </head>
+    <body>
+        <button onclick="initAudio()">Click me</button> 
+
+        <canvas id="canvasCol" height="320" width="240"></canvas>
+
+        <canvas id="canvas" height="512" width="512"></canvas>
+    
+        <script>
+
+
+            const wsAudio = new WebSocket("ws://192.168.1.22:8001/wsAudio");    
+
+            wsAudio.binaryType = 'arraybuffer'; 
+
+
+            var AudioContext = window.AudioContext || window.webkitAudioContext;
+            var audioCtx;
+            var analyser;
+            var source;
+
+
+            function initAudio() {
+                audioCtx = new AudioContext();
+                analyser = audioCtx.createAnalyser();
+                source.connect(analyser);
+                analyser.connect(context.destination);
+                analyser.fftSize = 256;
+            }
+
+            function viz() {
+                let bufferLength = analyser.frequencyBinCount;
+                let dataArray = new Uint8Array(bufferLength);
+
+
+                
+            }
+            
+            var nextStartTime = 0;
+
+            function addChunkToQueue( buffer ) {
+                if (!nextStartTime) {
+                    // we've not yet started the queue - just queue this up,
+                    // leaving a "latency gap" so we're not desperately trying
+                    // to keep up.  Note if the network is slow, this is going
+                    // to fail.  Latency gap here is 0.1 seconds.
+                    nextStartTime = audioCtx.currentTime + 0.1; 
+                }
+                var bsn = audioCtx.createBufferSource();
+                bsn.buffer = buffer;
+                bsn.connect( audioCtx.destination );
+                bsn.start( nextStartTime );
+
+                // Ensure the next chunk will start at the right time
+                nextStartTime += buffer.duration;
+                // console.log(nextStartTime);
+            }
+
+            wsAudio.onmessage = function(event) {
+                if (audioCtx) {
+                    var view = new Float32Array(event.data);
+                    //var viewf = new Float32Array(view);
+
+                    audioBuffer = audioCtx.createBuffer(2, view.length, 48000);
+                    audioBuffer.getChannelData(0).set(view); // needs to be -1.0 to 1.0
+
+                    addChunkToQueue(audioBuffer);
+                }
+            }
+        </script>
+    </body>
+</html>
