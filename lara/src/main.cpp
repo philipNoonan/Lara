@@ -6,6 +6,8 @@
 #include "kinect.hpp"
 #include "microphone.hpp"
 #include <chrono>
+#include <future>  
+
 typedef websocketpp::server<websocketpp::config::asio> server;
 
 using websocketpp::connection_hdl;
@@ -118,8 +120,15 @@ void run_kinect(broadcast_server& ServerColor,
 void run_mic(broadcast_server& ServerMic,
              microphone &Mic) {
 
+    
+
     while (1) {
-        ServerMic.send_blob((uint8_t*)Mic.run_blocking().data(), 1024 * sizeof(float));
+        std::vector<float> audio_data = Mic.run_blocking();
+        // https://stackoverflow.com/questions/13669094/how-to-use-stdasync-on-a-member-function
+        // using async hopefully allows the ws to transmit and the thread to instantly return to the read_stream
+        std::async(&broadcast_server::send_blob, ServerMic, (uint8_t*)audio_data.data(), 1024 * sizeof(float));
+        // for propper glitchless we may need to actually use the callback and count how many chunks 
+        // and chunk number to pass to the audiobuffer for propper cueing
     }
 }
 
