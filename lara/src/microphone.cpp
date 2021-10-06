@@ -72,7 +72,7 @@ void microphone::initialize() {
 
     PaStreamParameters  inputParameters,
                         outputParameters;
-    PaStream*           stream;
+    
     
     int                 i;
     int                 totalFrames;
@@ -100,8 +100,18 @@ void microphone::initialize() {
         SAMPLE_RATE,
         FRAMES_PER_BUFFER,
         paClipOff,      /* we won't output out of range samples so don't bother clipping them */
-        recordCallback,
-        &data[0] );
+        NULL,
+        NULL );
+
+    // err = Pa_OpenStream(
+    //     &stream,
+    //     &inputParameters,
+    //     NULL,                  /* &outputParameters, */
+    //     SAMPLE_RATE,
+    //     FRAMES_PER_BUFFER,
+    //     paClipOff,      /* we won't output out of range samples so don't bother clipping them */
+    //     recordCallback,
+    //     &data[0] );
 
     if( err != paNoError ) {
         std::cout << "errr open" << std::endl;
@@ -114,4 +124,17 @@ void microphone::initialize() {
 
 void microphone::finalize() {
 
+}
+
+std::vector<float> microphone::run_blocking() {
+    Pa_ReadStream(stream, data.data(), FRAMES_PER_BUFFER);
+
+    std::vector<float> outData(1024, 0);
+    //std::cout << data.size() << std::endl;
+    if (data.size() > 0) {
+        for(int i=0;i<outData.size();++i)
+            outData[i] = data[i * 7] * 1000.0f;
+    }
+
+    return outData;
 }

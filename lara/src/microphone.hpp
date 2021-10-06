@@ -21,7 +21,8 @@ private:
     int NUM_CHANNELS = 7;
     PaSampleFormat PA_SAMPLE_TYPE = paFloat32;
     std::vector<float> data;
-
+    PaStream* stream;
+    
     void initialize();
     void finalize();
 
@@ -31,6 +32,9 @@ public:
 
     // Destructor
     ~microphone();
+
+    std::vector<float> run_blocking();
+
 
     std::vector<float> get_data();
 };

@@ -5,7 +5,7 @@
 
 #include "kinect.hpp"
 #include "microphone.hpp"
-
+#include <chrono>
 typedef websocketpp::server<websocketpp::config::asio> server;
 
 using websocketpp::connection_hdl;
@@ -107,13 +107,20 @@ void run_kinect(broadcast_server& ServerColor,
     while(1){ // make this a running flag enum
         Kinect.update();
         // signal locks that frames are available
-        //ServerColor.send_blob(Kinect.get_color_buffer(), Kinect.get_color_buffer_size());
+        ServerColor.send_blob(Kinect.get_color_buffer(), Kinect.get_color_buffer_size());
         ServerDepth.send_blob(Kinect.get_depth_buffer(), Kinect.get_depth_buffer_size());
         ServerInfra.send_blob(Kinect.get_infra_buffer(), Kinect.get_infra_buffer_size());
-        ServerMic.send_blob((uint8_t*)Mic.get_data().data(), Mic.get_data().size());
 
     }
     
+}
+
+void run_mic(broadcast_server& ServerMic,
+             microphone &Mic) {
+
+    while (1) {
+        ServerMic.send_blob((uint8_t*)Mic.run_blocking().data(), 1024 * sizeof(float));
+    }
 }
 
 
@@ -141,6 +148,8 @@ int main() {
     thread tAud(&broadcast_server::run, &serverMic, 9008);
     std::cout << "4 " << std::endl;
 
-    run_kinect(serverColor, serverDepth, serverInfra, serverMic, Kinect, mic);
+
+    thread tAudServer(&run_mic, std::ref(serverMic), std::ref(mic));
+    run_kinect(serverColor, serverDepth, serverInfra, serverMic, Kinect, mic); // ALSO THREAD ME??
 
 }
