@@ -51,6 +51,8 @@ inline void kinect::initialize_sensor()
 
     // Create Transformation
     transformation = k4a::transformation( calibration );
+
+    ir_image_copy.resize(calibration.depth_camera_calibration.resolution_width * calibration.depth_camera_calibration.resolution_width);
 }
 
 // Finalize
@@ -146,6 +148,19 @@ inline void kinect::update_infra()
 {
     // Get Depth Image
     infra_image = capture.get_ir_image();
+    uint16_t* ptr = (uint16_t*)infra_image.get_buffer();
+
+
+    for (int i = 0; i < ir_image_copy.size(); i++) {  
+        ir_image_copy[i] = (uint8_t)(((float)(*(ptr + i)) * m_invgainIR) + m_biasIR);
+        
+        
+    }
+}
+
+void kinect::set_ir_invgain_bias(float invgain, float bias) {
+    m_invgainIR = invgain;
+    m_biasIR = bias;
 }
 
 
@@ -180,11 +195,11 @@ size_t kinect::get_depth_buffer_size() {
 }
 
 uint8_t * kinect::get_infra_buffer() {
-    return infra_image.get_buffer();
+    return ir_image_copy.data();
 }
 
 size_t kinect::get_infra_buffer_size() {
-    return infra_image.get_size();
+    return ir_image_copy.size();
 }
 
 // Draw

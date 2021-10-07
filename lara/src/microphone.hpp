@@ -1,3 +1,6 @@
+#ifndef MIC_H
+#define MIC_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "portaudio.h"
@@ -38,3 +41,6 @@ public:
 
     std::vector<float> get_data();
 };
+
+
+#endif

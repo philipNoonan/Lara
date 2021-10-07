@@ -1,7 +1,8 @@
-#ifndef __KINECT__
-#define __KINECT__
+#ifndef KIN_H
+#define KIN_H
 
 #include <k4a/k4a.hpp>
+#include <iterator>
 //#include <opencv2/opencv.hpp>
 
 
@@ -15,6 +16,9 @@ private:
     k4a::transformation transformation;
     k4a_device_configuration_t device_configuration;
     uint32_t device_index;
+
+    std::vector<uint8_t> ir_image_copy;
+    float m_invgainIR, m_biasIR;
 
     // Color
     k4a::image color_image;
@@ -60,6 +64,8 @@ public:
     size_t get_depth_buffer_size();
     uint8_t * get_infra_buffer();
     size_t get_infra_buffer_size(); 
+
+    void set_ir_invgain_bias(float invgain, float bias);
 
 
 

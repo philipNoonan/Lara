@@ -48,9 +48,6 @@ get_filename_component(ShaderName ${ShaderFile} NAME)
 	)
 endforeach()
 
-message(STATUS "boooosting")
-
-message(STATUS ${Boost_LIBRARY_DIRS})
 
 
 ### COPY MODEL FILES TO BUILD AND BINARY LOCATIONS IF THEY HAVE BEEN CHANGED ###
@@ -97,6 +94,7 @@ target_link_libraries(${PROJECT_NAME} GLEW::GLEW)
 target_link_libraries(${PROJECT_NAME} glm)
 target_link_libraries(${PROJECT_NAME} k4a::k4a)
 target_link_libraries(${PROJECT_NAME} portaudio)
+target_link_libraries(${PROJECT_NAME} /usr/local/lib/libserial.so)
 
 include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
