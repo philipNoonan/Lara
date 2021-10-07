@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <future>  
+#include <string>
 
 typedef websocketpp::server<websocketpp::config::asio> server;
 
@@ -43,14 +44,46 @@ public:
         //         << " and message: " << msg->get_payload()
         //         << std::endl;
 
-                std::stringstream stream(msg->get_payload());
-                
-                std::vector<float> vals;
-                std::copy( std::istream_iterator<float, char>(stream), std::istream_iterator<float, char>(), back_inserter( vals ) );
+        std::string s = msg->get_payload();
+        //std::cout << s << std::endl;
+        std::string delimiter = " ";
 
-                invgainIR = vals[0];
-                biasIR = vals[1];
+        std::vector<std::string> stringCommands;
 
+        size_t pos = 0;
+        std::string token;
+        while ((pos = s.find(delimiter)) != std::string::npos) {
+            token = s.substr(0, pos);
+            stringCommands.push_back(token);
+            s.erase(0, pos + delimiter.length());
+        }
+        stringCommands.push_back(s);
+
+        //for (auto i : stringCommands) {
+        //    std::cout << i << std::endl;
+        //}
+
+       
+            if (stringCommands[0] == "sliderIR") {
+                gainIR = std::stof(stringCommands[1]);
+                biasIR = std::stof(stringCommands[2]);
+            }
+            else if (stringCommands[0] == "color") {
+                showColor = !showColor;
+                //std::cout << "color " << showColor << std::endl;
+            }
+            else if (stringCommands[0] == "depth") {
+                showDepth = !showDepth;
+                //std::cout << "depth " << showDepth << std::endl;
+            }
+            else if (stringCommands[0] == "infra") {
+                showInfra = !showInfra;
+                //std::cout << "infra " << showInfra << std::endl;
+            }
+            else if (stringCommands[0] == "audio") {
+                showAudio = !showAudio;
+                //std::cout << "infra " << showInfra << std::endl;
+            }
     }
 
     // void get_send_col_frames() {
@@ -103,21 +136,22 @@ public:
         m_server.run();
     }
 
-    float getInvgainIR() {
-        return invgainIR;
-    }
+    float gainIR = 1;
+    float biasIR = 65535;
 
-    float getBiasIR() {
-        return biasIR;
-    }
+    bool showColor = false;
+    bool showDepth = false;
+    bool showInfra = true;
+    bool showAudio = false;
+
+    
 private:
     typedef std::set<connection_hdl,std::owner_less<connection_hdl>> con_list;
 
     server m_server;
     con_list m_connections;
 
-    float invgainIR = 1;
-    float biasIR = 65535;
+
 
     
 };
@@ -141,22 +175,30 @@ void run_kinect(broadcast_server& ServerColor,
                 kinect &Kinect
                 ) {
     while(1){ // make this a running flag enum
-        Kinect.set_ir_invgain_bias(ServerControls.getInvgainIR(), ServerControls.getBiasIR());
+        Kinect.set_ir_invgain_bias(ServerControls.gainIR, ServerControls.biasIR);
         Kinect.update();
         // signal locks that frames are available
-        
-        ServerColor.send_blob(Kinect.get_color_buffer(), Kinect.get_color_buffer_size());
-        ServerDepth.send_blob(Kinect.get_depth_buffer(), Kinect.get_depth_buffer_size());
-        ServerInfra.send_blob(Kinect.get_infra_buffer(), Kinect.get_infra_buffer_size());
+        if (ServerControls.showColor) {
+            ServerColor.send_blob(Kinect.get_color_buffer(), Kinect.get_color_buffer_size());
+        }
+        if (ServerControls.showDepth) {
+            ServerDepth.send_blob(Kinect.get_depth_buffer(), Kinect.get_depth_buffer_size());
+        }
+        if (ServerControls.showInfra) {
+            ServerInfra.send_blob(Kinect.get_infra_buffer(), Kinect.get_infra_buffer_size());
+        }
     }   
 }
 
-void run_mic(broadcast_server& ServerMic) {
+void run_mic(broadcast_server& ServerMic, 
+             broadcast_server& ServerControls) {
     while (1) {
         std::vector<float> audio_data = Mic.run_blocking();
         // https://stackoverflow.com/questions/13669094/how-to-use-stdasync-on-a-member-function
         // using async hopefully allows the ws to transmit and the thread to instantly return to the read_stream
-        ServerMic.send_blob((uint8_t*)audio_data.data(), 1024 * sizeof(float));
+        if (ServerControls.showAudio) {
+            ServerMic.send_blob((uint8_t*)audio_data.data(), 1024 * sizeof(float));
+        }
         // for propper glitchless we may need to actually use the callback and count how many chunks 
         // and chunk number to pass to the audiobuffer for propper cueing
     }
@@ -194,7 +236,7 @@ int main() {
     thread tTher(&broadcast_server::run, &serverThermal, 9009);
     thread tCont(&broadcast_server::run, &serverControls, 9010);
 
-    thread tAudServer(&devices::run_mic, &devs, std::ref(serverMic));
+    thread tAudServer(&devices::run_mic, &devs, std::ref(serverMic), std::ref(serverControls));
     thread tThermalServer(&devices::run_thermal, &devs, std::ref(serverThermal), std::ref(serverControls));
 
     devs.run_kinect(serverColor, serverDepth, serverInfra, serverControls, devs.Kinect); // ALSO THREAD ME??

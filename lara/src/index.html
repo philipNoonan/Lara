@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <head>
     <title>Basic WebSocket Test</title>
-    <button onclick="initAudio()">Click me</button> 
+    <button onclick="pauseAudio()">Audio</button> 
+    <button onclick="pauseColor()">Color</button> 
+    <button onclick="pauseDepth()">Depth</button> 
+    <button onclick="pauseInfra()">Infra</button> 
 
     <canvas id="canvasColor" height="1440" width="2560"></canvas>
     <canvas id="canvasDepth" height="512" width="512"></canvas>
     <canvas id="canvasInfra" height="512" width="512"></canvas>
-    <canvas id="canvasTherm" height="24" width="32"></canvas>
+    <canvas id="canvasTherm" height="240" width="320"></canvas>
     <div class="slidecontainer">
         <input type="range" min="1" max="255" value="255" class="slider" id="invgainSlider">
     </div>
@@ -77,14 +80,11 @@
         var imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
 
         var view = new DataView(imageData.data.buffer);
-        for (var y = 0; y < canvasHeight; ++y) {
-            for (var x = 0; x < canvasWidth; ++x) {
-                var offset = (y * canvasWidth + x);
-                view.setUint8(offset * 4, dv.getUint8(offset * 2)); 
-                view.setUint8(offset * 4 + 1, dv.getUint8(offset * 2)); 
-                view.setUint8(offset * 4 + 2, dv.getUint8(offset * 2)); 
-                view.setUint8(offset * 4 + 3, 255); 
-            }
+        for (var offset = 0; offset < canvasHeight * canvasWidth; ++offset) {
+            view.setUint8(offset * 4, dv.getUint8(offset * 2)); 
+            view.setUint8(offset * 4 + 1, dv.getUint8(offset * 2)); 
+            view.setUint8(offset * 4 + 2, dv.getUint8(offset * 2)); 
+            view.setUint8(offset * 4 + 3, 255); 
         }
         ctx.putImageData(imageData, 0, 0);
 
@@ -101,14 +101,11 @@
         var imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
 
         var view = new DataView(imageData.data.buffer);
-        for (var y = 0; y < canvasHeight; ++y) {
-            for (var x = 0; x < canvasWidth; ++x) {
-                var offset = (y * canvasWidth + x);
-                view.setUint8(offset * 4, dv.getUint8(offset)); 
-                view.setUint8(offset * 4 + 1, dv.getUint8(offset)); 
-                view.setUint8(offset * 4 + 2, dv.getUint8(offset)); 
-                view.setUint8(offset * 4 + 3, 255);
-            }
+        for (var offset = 0; offset < canvasHeight * canvasWidth; ++offset) {
+            view.setUint8(offset * 4, dv.getUint8(offset)); 
+            view.setUint8(offset * 4 + 1, dv.getUint8(offset)); 
+            view.setUint8(offset * 4 + 2, dv.getUint8(offset)); 
+            view.setUint8(offset * 4 + 3, 255);
         }
         ctx.putImageData(imageData, 0, 0);
 
@@ -120,13 +117,7 @@
             //var source;
 
 
-            function initAudio() {
-                audioCtx = new AudioContext();
-                //analyser = audioCtx.createAnalyser();
-                //source.connect(analyser);
-                //analyser.connect(context.destination);
-                //analyser.fftSize = 256;
-            }
+
 
     var nextStartTime = 0;
 
@@ -171,12 +162,14 @@
         var imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
 
         var view = new DataView(imageData.data.buffer);
-        for (var y = 0; y < canvasHeight; ++y) {
-            for (var x = 0; x < canvasWidth; ++x) {
+        for (var y = 0; y < canvasHeight; ++y) { // 48
+            for (var x = 0; x < canvasWidth; ++x) { // 64
                 var offset = (y * canvasWidth + x);
-                view.setUint8(offset * 4, dv.getUint8(offset)); 
-                view.setUint8(offset * 4 + 1, dv.getUint8(offset)); 
-                view.setUint8(offset * 4 + 2, dv.getUint8(offset)); 
+                var littleOffset = (Math.floor(y / 10) * 32) + Math.floor(x / 10)
+                //console.log(littleOffset)
+                view.setUint8(offset * 4, dv.getUint8(littleOffset)); 
+                view.setUint8(offset * 4 + 1, dv.getUint8(littleOffset)); 
+                view.setUint8(offset * 4 + 2, dv.getUint8(littleOffset)); 
                 view.setUint8(offset * 4 + 3, 255);
             }
         }
@@ -188,7 +181,7 @@
         var minInput = document.getElementById("invgainSlider")
         var maxInput = document.getElementById("biasSlider")
 
-        wsControls.send(String(minInput.value / 255) + " " + String(maxInput.value))
+        wsControls.send("sliderIR " + String(minInput.value / 255) + " " + String(maxInput.value))
         event.preventDefault()
     }
 
@@ -200,6 +193,32 @@
         sendMessage(event);            
     }
 
+    function pauseColor() {
+        wsControls.send("color");
+        event.preventDefault()
+    }
+
+    function pauseDepth() {
+        wsControls.send("depth");
+        event.preventDefault()
+    }
+
+    function pauseInfra() {
+        wsControls.send("infra");
+        event.preventDefault()
+    }
+
+    function pauseAudio() {
+        if (!audioCtx) {
+            audioCtx = new AudioContext();
+        }
+        wsControls.send("audio");
+        event.preventDefault()
+                //analyser = audioCtx.createAnalyser();
+                //source.connect(analyser);
+                //analyser.connect(context.destination);
+                //analyser.fftSize = 256;
+    }
 
   </script>
 
